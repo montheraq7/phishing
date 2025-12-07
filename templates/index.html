@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing Email Detector</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #141b3d;
+            --accent-safe: #10b981;
+            --accent-danger: #ef4444;
+            --accent-warning: #f59e0b;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --border-color: #1f2937;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1729 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            padding: 2rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+            top: -250px;
+            left: -250px;
+            animation: float 20s infinite ease-in-out;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.08) 0%, transparent 70%);
+            bottom: -200px;
+            right: -200px;
+            animation: float 25s infinite ease-in-out reverse;
+            pointer-events: none;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(50px, 50px) scale(1.1); }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.3));
+            animation: pulse 3s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 1s ease-out 0.3s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 1rem;
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 200px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analyze-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .analyze-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .analyze-btn:active {
+            transform: translateY(0);
+        }
+
+        .analyze-btn:disabled {
+            background: #374151;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .analyze-btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .loading.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top-color: #10b981;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .result {
+            display: none;
+            margin-top: 2rem;
+            padding: 2rem;
+            border-radius: 1rem;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.active {
+            display: block;
+        }
+
+        .result.safe {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border: 2px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .result.phishing {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .result-icon {
+            font-size: 3rem;
+            animation: bounceIn 0.6s ease-out;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+
+        .result.safe .result-title {
+            color: var(--accent-safe);
+        }
+
+        .result.phishing .result-title {
+            color: var(--accent-danger);
+        }
+
+        .result-details {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-top: 1rem;
+        }
+
+        .ml-badge {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            color: var(--accent-danger);
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            animation: fadeIn 1.5s ease-out 0.6s both;
+        }
+
+        .examples {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 1rem;
+        }
+
+        .examples h3 {
+            color: #3b82f6;
+            margin-bottom: 1rem;
+        }
+
+        .example-btn {
+            display: inline-block;
+            margin: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 0.5rem;
+            color: #3b82f6;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .example-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🛡️</div>
+            <h1>Phishing Email Detector</h1>
+            <p class="subtitle">Detect phishing attempts using AI-powered analysis</p>
+        </div>
+
+        <div class="card">
+            <form id="emailForm">
+                <div class="input-group">
+                    <label for="emailSubject">Email Subject</label>
+                    <input type="text" id="emailSubject" placeholder="e.g., Urgent: Update your bank account" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="emailBody">Email Content</label>
+                    <textarea id="emailBody" placeholder="Paste the email content here..." required></textarea>
+                </div>
+
+                <button type="submit" class="analyze-btn" id="analyzeBtn">
+                    <span>🔍 Analyze Email</span>
+                </button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing email using AI model...</p>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <div class="result" id="result">
+                <div class="result-header">
+                    <div class="result-icon" id="resultIcon"></div>
+                    <div class="result-title" id="resultTitle"></div>
+                </div>
+                <div class="result-details" id="resultDetails"></div>
+            </div>
+
+            <div class="examples">
+                <h3>💡 Try Quick Examples:</h3>
+                <button class="example-btn" onclick="fillPhishingExample()">Phishing Email</button>
+                <button class="example-btn" onclick="fillSafeExample()">Safe Email</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Powered by Machine Learning • Trained on 18,000+ emails</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin + '/api/analyze';
+        
+        const form = document.getElementById('emailForm');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const error = document.getElementById('error');
+        const resultIcon = document.getElementById('resultIcon');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultDetails = document.getElementById('resultDetails');
+
+        function fillPhishingExample() {
+            document.getElementById('emailSubject').value = 'URGENT: Verify Your Account Immediately';
+            document.getElementById('emailBody').value = `Dear Customer,
+
+We have detected unusual activity on your bank account. Your account will be suspended within 24 hours unless you verify your information immediately.
+
+Click here now: http://secure-bank-verify.suspicious.com
+
+Please confirm your credit card number and password to avoid account closure.
+
+Best regards,
+Security Team`;
+        }
+
+        function fillSafeExample() {
+            document.getElementById('emailSubject').value = 'Weekly Team Meeting Summary';
+            document.getElementById('emailBody').value = `Hello Team,
+
+Here's a summary of our weekly meeting:
+
+1. Discussed the new project timeline
+2. Assigned tasks for next week
+3. Reviewed current progress
+
+Next meeting is scheduled for Tuesday at 10 AM.
+
+Thanks,
+Project Manager`;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const subject = document.getElementById('emailSubject').value;
+            const body = document.getElementById('emailBody').value;
+
+            result.classList.remove('active', 'safe', 'phishing');
+            error.classList.remove('active');
+            loading.classList.add('active');
+            analyzeBtn.disabled = true;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        subject: subject,
+                        body: body
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to connect to analysis service');
+                }
+
+                const analysis = await response.json();
+
+                loading.classList.remove('active');
+                result.classList.add('active');
+
+                if (analysis.is_phishing) {
+                    result.classList.add('phishing');
+                    resultIcon.textContent = '⚠️';
+                    resultTitle.textContent = 'Warning: Suspicious Email!';
+                    
+                    let details = `<strong>Confidence:</strong> ${analysis.confidence}<br><br>`;
+                    details += `<strong>Reason:</strong> ${analysis.reason}<br>`;
+                    
+                    if (analysis.ml_confidence) {
+                        details += `<div class="ml-badge">ML Confidence: ${analysis.ml_confidence}</div><br>`;
+                    }
+                    
+                    if (analysis.warning_signs && analysis.warning_signs.length > 0) {
+                        details += '<br><strong>Warning Signs:</strong><br>';
+                        analysis.warning_signs.forEach(sign => {
+                            details += `🔸 ${sign}<br>`;
+                        });
+                    }
+                    
+                    resultDetails.innerHTML = details;
+                } else {
+                    result.classList.add('safe');
+                    resultIcon.textContent = '✅';
+                    resultTitle.textContent = 'Safe Email';
+                    
+                    let details = `<strong>Confidence:</strong> ${analysis.confidence}<br><br>`;
+                    details += `<strong>Analysis:</strong> ${analysis.reason}<br>`;
+                    
+                    if (analysis.ml_confidence) {
+                        details += `<div class="ml-badge">ML Confidence: ${analysis.ml_confidence}</div><br>`;
+                    }
+                    
+                    if (analysis.warning_signs && analysis.warning_signs.length > 0) {
+                        details += '<br><strong>Notes:</strong><br>';
+                        analysis.warning_signs.forEach(sign => {
+                            details += `✓ ${sign}<br>`;
+                        });
+                    }
+                    
+                    resultDetails.innerHTML = details;
+                }
+
+            } catch (err) {
+                console.error('Error:', err);
+                loading.classList.remove('active');
+                error.classList.add('active');
+                error.innerHTML = `
+                    <strong>❌ Error</strong><br>
+                    ${err.message}<br>
+                `;
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
